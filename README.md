@@ -1,60 +1,67 @@
-# WebOS - Personal Web-based Operating System
+# LifeOS
 
-A minimal, fully functional web-based operating system that runs in your browser.
+A retro Mac OS-inspired mental health support application that runs entirely in your browser.
+
+## Demo
+
+https://khanaaaaaa.github.io/LifeOS/
 
 ## Features
 
-- **Desktop Environment**: Beautiful gradient background with draggable icons
-- **Window Manager**: Draggable, resizable windows with minimize, maximize, and close controls
-- **File Explorer**: Create, view, and manage files stored in browser's local storage
-- **Text Editor**: Edit and save text files
-- **Terminal**: Command-line interface with basic commands
-- **Settings**: Customize appearance (background color)
-- **Taskbar**: Shows open applications and live clock
-- **Persistence**: All files and settings saved in browser's local storage
+- Feelings tracker with 8 emotions
+- Interactive emotional support conversations
+- Journal for writing thoughts
+- Box breathing exercise
+- Positive memory storage
+- Mental health crisis resources
+- Retro Mac OS aesthetic with sound effects
+- All data stored locally in browser
 
 ## How to Use
 
-1. Open `index.html` in any modern web browser
+1. Open index.html in any modern web browser
 2. Double-click desktop icons to open applications
-3. Drag windows by their title bar
-4. Resize windows using the bottom-right corner
-5. Use taskbar to switch between open windows
+3. Click the Help button in the taskbar for crisis resources
+4. Drag windows by their title bar
+5. Select feelings and interact with the emotional support system
 
 ## Applications
 
-### Files
-- Create new files by entering a name and clicking "Create File"
-- Click on any file to open it in the Text Editor
+### Feelings
+Select from 8 different emotions and engage in supportive conversations. Drag positive emotions to the Disk to save memories, or drag negative emotions to Trash to release them.
 
-### Text Editor
-- Edit file content
-- Save files to the file system
+### Journal
+Write and save personal journal entries that persist in your browser's local storage.
 
-### Terminal
-Available commands:
-- `help` - Show available commands
-- `clear` - Clear terminal screen
-- `date` - Show current date and time
-- `ls` - List all files
-- `echo [text]` - Print text to terminal
+### Breathe
+Guided box breathing exercise with visual and audio cues to help manage stress and anxiety.
 
-### Settings
-- Change desktop background color
-- Apply or reset settings
+### Disk
+View saved positive memories and moments.
 
 ## Technical Details
 
 - Single HTML file with embedded CSS and JavaScript
-- No external dependencies
+- No external dependencies or frameworks
 - Uses localStorage for data persistence
-- Fully responsive window management
-- Modern gradient UI design
+- Retro pixel art icons and Mac OS-inspired UI
+- Web Audio API for sound effects
 
 ## Browser Compatibility
 
-Works on all modern browsers that support:
-- HTML5
-- CSS3
-- ES6 JavaScript
-- localStorage API
+Works on all modern browsers that support HTML5, CSS3, ES6 JavaScript, and localStorage API.
+
+## Privacy
+
+All data is stored locally in your browser. Nothing is sent to any server.
+
+## Crisis Resources
+
+If you're in crisis, please reach out:
+- 988 Suicide & Crisis Lifeline: Call or text 988
+- Crisis Text Line: Text HOME to 741741
+- SAMHSA National Helpline: 1-800-662-4357
+
+## License
+
+Open source project for mental health support.
