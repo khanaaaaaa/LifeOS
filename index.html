@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LifeOS</title>
+    <link rel="icon" href="data:,">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #c0c0c0;
+            font-family: 'Chicago', 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M0,0 L0,12 L4,9 L6,14 L8,13 L6,8 L11,8 Z" fill="black" stroke="white" stroke-width="1"/></svg>') 0 0, auto;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        
+        #desktop {
+            height: 100vh;
+            background: url('icons/wallpaper.png') center/cover;
+            position: relative;
+            padding-top: 24px;
+        }
+
+        .desktop-icon {
+            position: absolute;
+            width: 64px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+            padding: 4px;
+            border-radius: 2px;
+            z-index: 10001;
+        }
+        .desktop-icon:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        .desktop-icon.selected { 
+            background: rgba(0, 100, 200, 0.35);
+            box-shadow: inset 0 0 0 1px rgba(0, 100, 200, 0.6), 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .icon-img {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 4px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .icon-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #feelings-icon .icon-img img {
+            transform: scale(1.5);
+        }
+        .icon-label {
+            font-size: 9px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+        }
+
+        .window {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.3), 2px 2px 0 rgba(0,0,0,0.5);
+            resize: both;
+            overflow: auto;
+            min-width: 300px;
+            min-height: 200px;
+        }
+        .titlebar {
+            height: 20px;
+            background: repeating-linear-gradient(90deg, #000 0px, #000 1px, #fff 1px, #fff 2px);
+            border-bottom: 2px solid #000;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            cursor: move;
+        }
+        .close-box {
+            width: 12px;
+            height: 12px;
+            border: 2px solid #000;
+            background: #fff;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: all 0.1s;
+        }
+        .close-box:hover { background: #f0f0f0; transform: scale(1.1); }
+        .close-box:active { background: #000; transform: scale(0.95); }
+        .window-content {
+            padding: 16px;
+            background: #fff;
+            border: 1px solid #000;
+            margin: 2px;
+        }
+
+        ::-webkit-scrollbar { width: 16px; background: #fff; }
+        ::-webkit-scrollbar-track {
+            background: repeating-linear-gradient(45deg, #fff 0px, #fff 2px, #ddd 2px, #ddd 4px);
+            border: 1px solid #000;
+        }
+        ::-webkit-scrollbar-thumb { background: #fff; border: 2px solid #000; }
+        ::-webkit-scrollbar-button { background: #fff; border: 1px solid #000; height: 16px; }
+
+        #app-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .app-icon {
+            text-align: center;
+            cursor: pointer;
+            padding: 8px;
+            border: 2px solid transparent;
+            user-select: none;
+        }
+        .app-icon.focused { background: #000; color: #fff; border: 2px solid #000; }
+        .app-icon:active { transform: translateY(1px); }
+        .app-img { font-size: 32px; margin-bottom: 4px; }
+        .app-label { font-size: 10px; font-weight: bold; }
+
+        .menu-item.open {
+            background: #000;
+            color: #fff;
+        }
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 0;
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            min-width: 120px;
+            z-index: 10000;
+        }
+        .dropdown.show { display: block; }
+        .dropdown-item {
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #000;
+        }
+        .dropdown-item:hover { background: #000; color: #fff; }
+        .dropdown-item:last-child { border-bottom: none; }
+
+        @keyframes beep { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .beeping { animation: beep 0.1s 2; }
+
+        @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+        .blink { animation: blink 1s infinite; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            width: 400px;
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.3), 2px 2px 0 #000;
+            z-index: 10002;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .modal.show { display: block; }
+        #calm-modal.show {
+            display: block !important;
+            animation: none !important;
+        }
+        .modal-title {
+            height: 20px;
+            background: #000;
+            color: #fff;
+            border-bottom: 1px solid #000;
+            padding: 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: move;
+        }
+        .modal-close {
+            width: 14px;
+            height: 14px;
+            border: 1px solid #fff;
+            background: #000;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 10px;
+            line-height: 1;
+            transition: all 0.15s ease;
+            position: relative;
+            z-index: 10003;
+        }
+        .modal-close:before { content: 'x'; }
+        .modal-close:hover { 
+            background: #333; 
+            transform: scale(1.15);
+            box-shadow: 0 0 4px rgba(255,255,255,0.3);
+        }
+        .modal-close:active { 
+            background: #fff; 
+            color: #000; 
+            border-color: #000;
+            transform: scale(0.95);
+        }
+        .window-title {
+            font-size: 11px;
+            font-weight: bold;
+            flex: 1;
+            color: #fff;
+        }
+        .modal-content {
+            padding: 20px;
+            text-align: center;
+        }
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .emoji-btn {
+            font-size: 40px;
+            padding: 10px;
+            border: 2px solid #000;
+            background: #f0f0f0;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+            border-radius: 2px;
+        }
+        .emoji-btn img {
+            width: 50px;
+            height: 50px;
+            image-rendering: pixelated;
+            transition: transform 0.2s ease;
+        }
+        .emoji-btn:hover img {
+            transform: scale(1.15) rotate(5deg);
+        }
+        .emoji-label {
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .emoji-btn:hover { 
+            background: #e0e0e0;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .emoji-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .emoji-btn.selected { 
+            background: #000;
+            color: #fff;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .send-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid #000;
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+        .send-btn:hover { 
+            background: #f0f0f0; 
+            transform: translateY(-2px);
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+        }
+        .send-btn:active { 
+            background: #000; 
+            color: #fff; 
+            transform: translateY(0);
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+
+        .messages-window {
+            position: fixed;
+            width: 350px;
+            height: 450px;
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.3), 2px 2px 0 #000;
+            z-index: 10003;
+            display: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .messages-window.show { display: block; }
+        .messages-titlebar {
+            height: 20px;
+            background: #000;
+            color: #fff;
+            border-bottom: 1px solid #000;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            cursor: move;
+            gap: 4px;
+        }
+        .messages-close {
+            width: 14px;
+            height: 14px;
+            border: 1px solid #fff;
+            background: #000;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 10px;
+            transition: all 0.15s ease;
+            position: relative;
+            z-index: 10004;
+        }
+        .messages-close:before { content: 'x'; }
+        .messages-close:hover { 
+            background: #333; 
+            transform: scale(1.15);
+            box-shadow: 0 0 4px rgba(255,255,255,0.3);
+        }
+        .messages-close:active { 
+            background: #fff; 
+            color: #000; 
+            border-color: #000;
+            transform: scale(0.95);
+        }
+        .messages-header {
+            background: #e0e0e0;
+            padding: 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            text-align: center;
+        }
+        .messages-body {
+            height: 320px;
+            padding: 12px;
+            overflow-y: auto;
+            background: #fff;
+        }
+        .message-bubble {
+            background: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            line-height: 1.5;
+            max-width: 85%;
+            border-radius: 4px;
+            box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .message-bubble.user {
+            background: #fff;
+            margin-left: auto;
+            text-align: right;
+            border: 2px solid #000;
+        }
+        .messages-input {
+            border-top: 2px solid #000;
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+        }
+        .message-btn {
+            flex: 1;
+            padding: 6px;
+            border: 2px solid #000;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+            transition: all 0.15s ease;
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+        .message-btn:hover { 
+            background: #e0e0e0; 
+            transform: translateY(-2px);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+        }
+        .message-btn:active { 
+            background: #000; 
+            color: #fff; 
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .sticker {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            cursor: move;
+            z-index: 10004;
+            user-select: none;
+            animation: popIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0) rotate(0deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+        .sticker img {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        .action-notif {
+            position: fixed;
+            top: 25px;
+            right: 20px;
+            background: #fff;
+            border: 2px solid #000;
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            z-index: 10005;
+            display: none;
+            animation: slideInRight 0.3s;
+        }
+        .action-notif.show { display: block; }
+        @keyframes slideInRight {
+            from { transform: translateX(300px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .system-alert {
+            position: fixed;
+            background: #fff;
+            border: 2px solid #000;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.3), 2px 2px 0 #000;
+            padding: 20px;
+            min-width: 300px;
+            z-index: 10006;
+            display: none;
+            text-align: center;
+        }
+        .system-alert.show { display: block; }
+        .system-alert-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .system-alert-text {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .system-alert-btn {
+            padding: 6px 20px;
+            border: 2px solid #000;
+            background: #f0f0f0;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+        .system-alert-btn:hover { 
+            background: #e0e0e0;
+            transform: translateY(-1px);
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+        }
+        .system-alert-btn:active { 
+            background: #000; 
+            color: #fff;
+            transform: translateY(0);
+            box-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .quote-text {
+            animation: fadeIn 1s ease;
+        }
+
+        .memory-list {
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .memory-item {
+            padding: 8px;
+            border-bottom: 1px solid #000;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .memory-item:last-child { border-bottom: none; }
+        .memory-date {
+            font-weight: bold;
+            font-size: 9px;
+            color: #666;
+        }
+
+        #desktop::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.1) 100%);
+        }
+        
+        .taskbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            z-index: 10000;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .taskbar-left {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .taskbar-right {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .taskbar-item {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 3px;
+            transition: all 0.15s ease;
+        }
+        .taskbar-item:hover {
+            background: rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+        }
+        .taskbar-item:active {
+            background: rgba(0,0,0,0.15);
+            transform: translateY(0);
+        }
+        .apple-logo svg{
+            display: block;
+        }
+        .mood-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid #000;
+            transition: all 0.3s ease;
+        }
+        .mood-dot:hover {
+            transform: scale(1.2);
+        }
+        #desktop::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 9998;
+        }
+    </style>
+</head>
+<body>
+    <div id="desktop">
+        <div class="taskbar">
+            <div class="taskbar-left">
+                <div class="taskbar-item apple-logo">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                                <path d="M11.5 6.5c0-1.5 1.2-2.2 1.3-2.3-0.7-1-1.8-1.2-2.2-1.2-0.9-0.1-1.8 0.6-2.3 0.6-0.5 0-1.2-0.5-2-0.5-1 0-2 0.6-2.5 1.5-1.1 1.9-0.3 4.7 0.8 6.2 0.5 0.7 1.1 1.5 2 1.5 0.8 0 1.1-0.5 2-0.5 0.9 0 1.1 0.5 2 0.5 0.8 0 1.4-0.8 1.9-1.5 0.6-0.8 0.9-1.6 0.9-1.6s-1.7-0.7-1.7-2.7zM9.5 2.5c0.4-0.5 0.7-1.2 0.6-1.9-0.6 0-1.3 0.4-1.7 0.9-0.4 0.5-0.7 1.2-0.6 1.9 0.7 0 1.3-0.4 1.7-0.9z"/>
+                    </svg>
+                </div>
+                <div class="taskbar-item">Help</div>
+            </div>
+            <div class="taskbar-right">
+                <div class="taskbar-item" id="mood-dot-container" title="Current mood">
+                    <div class="mood-dot" id="mood-dot" style="background: #999;"></div>
+                </div>
+                <div class="taskbar-item" id="taskbar-clock"></div>
+            </div>
+        </div>
+        
+        <div class="desktop-icon" style="top:64px;left:20px;" id="disk-icon">
+            <div class="icon-img"><img src="icons/disk.png" alt="Disk"></div>
+            <div class="icon-label">Disk</div>
+        </div>
+        <div class="desktop-icon" style="top:144px;left:20px;">
+            <div class="icon-img"><img src="icons/trash.png" alt="Trash"></div>
+            <div class="icon-label">Trash</div>
+        </div>
+        <div class="desktop-icon" style="top:224px;left:20px;" id="feelings-icon">
+            <div class="icon-img"><img src="icons/feelings.png" alt="Feelings"></div>
+            <div class="icon-label">Feelings</div>
+        </div>
+        <div class="desktop-icon" style="top:304px;left:20px;" id="journal-icon">
+            <div class="icon-img"><img src="icons/journal.png" alt="Journal"></div>
+            <div class="icon-label">Journal</div>
+        </div>
+        <div class="desktop-icon" style="top:384px;left:20px;" id="breathe-icon">
+            <div class="icon-img"><img src="icons/breathe.png" alt="Breathe"></div>
+            <div class="icon-label">Breathe</div>
+        </div>
+    </div>
+
+    <div class="modal" id="feelings-modal">
+        <div class="modal-title">
+            <div class="modal-close" id="modal-close"></div>
+            <div class="window-title">Feelings</div>
+        </div>
+        <div class="modal-content">
+            <div style="font-size:14px;font-weight:bold;margin-bottom:10px;">How do you feel?</div>
+            <div class="emoji-grid">
+                <div class="emoji-btn" data-feeling="happy">
+                    <img src="icons/happy.png" alt="Happy">
+                    <div class="emoji-label">Happy</div>
+                </div>
+                <div class="emoji-btn" data-feeling="sad">
+                    <img src="icons/sad.png" alt="Sad">
+                    <div class="emoji-label">Sad</div>
+                </div>
+                <div class="emoji-btn" data-feeling="angry">
+                    <img src="icons/angry.png" alt="Angry">
+                    <div class="emoji-label">Angry</div>
+                </div>
+                <div class="emoji-btn" data-feeling="anxious">
+                    <img src="icons/anxious.png" alt="Anxious">
+                    <div class="emoji-label">Anxious</div>
+                </div>
+                <div class="emoji-btn" data-feeling="tired">
+                    <img src="icons/tired.png" alt="Tired">
+                    <div class="emoji-label">Tired</div>
+                </div>
+                <div class="emoji-btn" data-feeling="stressed">
+                    <img src="icons/stressed.png" alt="Stressed">
+                    <div class="emoji-label">Stressed</div>
+                </div>
+                <div class="emoji-btn" data-feeling="calm">
+                    <img src="icons/calm.png" alt="Calm">
+                    <div class="emoji-label">Calm</div>
+                </div>
+                <div class="emoji-btn" data-feeling="confused">
+                    <img src="icons/confused.png" alt="Confused">
+                    <div class="emoji-label">Confused</div>
+                </div>
+            </div>
+            <button class="send-btn" id="send-feeling">Send Feeling</button>
+        </div>
+    </div>
+
+    <div class="messages-window" id="messages-window">
+        <div class="messages-titlebar">
+            <div class="messages-close" id="messages-close"></div>
+            <div class="window-title">Messages</div>
+        </div>
+        <div class="messages-header">Messages - Emotional Support</div>
+        <div class="messages-body" id="messages-body"></div>
+        <div class="messages-input" id="messages-input"></div>
+    </div>
+
+    <div class="action-notif" id="action-notif"></div>
+    <div class="system-alert" id="system-alert">
+        <div class="system-alert-icon" id="alert-icon"></div>
+        <div class="system-alert-text" id="alert-text"></div>
+        <div class="memory-list" id="memory-list" style="display:none;"></div>
+        <button class="system-alert-btn" id="alert-btn" onclick="closeAlert()">OK</button>
+    </div>
+
+    <div class="modal" id="journal-modal" style="width:500px;">
+        <div class="modal-title">
+            <div class="modal-close" id="journal-close"></div>
+            <div class="window-title">Journal</div>
+        </div>
+        <div class="modal-content">
+            <div style="font-size:12px;font-weight:bold;margin-bottom:10px;">Write your thoughts...</div>
+            <textarea id="journal-text" style="width:100%;height:200px;border:1px solid #000;padding:8px;font-family:inherit;font-size:11px;resize:none;"></textarea>
+            <button class="send-btn" id="save-journal" style="margin-top:10px;">Save Entry</button>
+            <div id="journal-list" style="margin-top:15px;max-height:150px;overflow-y:auto;border-top:1px solid #000;padding-top:10px;"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="breathe-modal" style="width:400px;">
+        <div class="modal-title">
+            <div class="modal-close" id="breathe-close"></div>
+            <div class="window-title">Breathing Exercise</div>
+        </div>
+        <div class="modal-content">
+            <div style="font-size:14px;font-weight:bold;margin-bottom:20px;">Box Breathing</div>
+            <div id="breathe-circle" style="width:150px;height:150px;border:3px solid #000;border-radius:50%;margin:20px auto;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;transition:transform 4s;"></div>
+            <div id="breathe-instruction" style="font-size:16px;font-weight:bold;margin:20px 0;min-height:30px;">Click Start</div>
+            <button class="send-btn" id="start-breathe">Start</button>
+        </div>
+    </div>
+
+    <div class="modal" id="help-modal" style="width:450px;">
+        <div class="modal-title">
+            <div class="modal-close" id="help-close"></div>
+            <div class="window-title">Mental Health Resources</div>
+        </div>
+        <div class="modal-content" style="text-align:left;">
+            <div style="font-size:12px;font-weight:bold;margin-bottom:15px;text-align:center;">Crisis Support</div>
+            <div style="font-size:11px;line-height:1.6;margin-bottom:20px;">
+                <div style="margin-bottom:10px;padding:8px;border:2px solid #000; background:#f0f0f0;">
+                    <strong>998 Suicide & Crisis Lifeline</strong><br>
+                    Call/Text: 998<br>
+                    Available: 24/7 
+                </div>
+                <div style="margin-bottom:10px;padding:8px;border:2px solid #000;background:#f0f0f0;">
+                    <strong>Crisis Text Line</strong><br>
+                    TextHOME to 741741<br>
+                    Available 24/7
+                </div>
+                <div style="margin-bottom:10px;padding:8px;border:2px solid #000;background:#f0f0f0;">
+                    <strong>SAMHSA National Helpline</strong><br>
+                    Call: 1-800-662-4357<br>
+                    Available 24/7
+                </div>
+                <div style="font-size:10px;color:#666;text-align:center;border-top:1px solid #000; padding-top:10px;">
+                    You are not alone. Help is available.
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="calm-modal" style="width:500px;z-index:10007;opacity:1!important;min-height:300px;">
+        <div class="modal-title">
+            <div class="modal-close" id="calm-close"></div>
+            <div class="window-title">Calm</div>
+        </div>
+        <div class="modal-content" style="padding:20px;min-height:250px;">
+            <div class="quote-text" id="quote-text" style="font-size:14px;line-height:1.8;margin:30px 0;min-height:100px;font-style:italic;"></div>
+            <div id="quote-author" style="font-size:11px;color:#666;margin-bottom:30px;text-align:right;">- Loading...</div>
+            <div style="display:flex;gap:8px;">
+                <button class="send-btn" id="new-quote" style="flex:1;">New Quote</button>
+                <button class="send-btn" id="save-quote" style="flex:1;">Save Quote</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, duration, type = 'sine') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            osc.type = type;
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+        
+        const sounds = {
+            click: () => playTone(800, 0.05),
+            open: () => { playTone(600, 0.1); setTimeout(() => playTone(800, 0.1), 50); },
+            close: () => { playTone(800, 0.1); setTimeout(() => playTone(600, 0.1), 50); },
+            select: () => playTone(1000, 0.08),
+            success: () => {
+                playTone(523, 0.15);
+                setTimeout(() => playTone(659, 0.15), 150);
+                setTimeout(() => playTone(784, 0.3), 300);
+            },
+            message: () => playTone(700, 0.12, 'triangle'),
+            release: () => {
+                for(let i = 0; i < 5; i++) {
+                    setTimeout(() => playTone(1200 - i * 100, 0.1), i * 80);
+                }
+            }
+        };
+        
+        const beep = () => { 
+            sounds.click();
+            document.body.classList.add('beeping'); 
+            setTimeout(() => document.body.classList.remove('beeping'), 200); 
+        };
+
+        function showAction(text, duration = 2000) {
+            const notif = document.getElementById('action-notif');
+            notif.textContent = text;
+            notif.classList.add('show');
+            setTimeout(() => notif.classList.remove('show'), duration);
+        }
+
+        function showAlert(text, icon = '▪', showMemories = false) {
+            sounds.message();
+            document.getElementById('alert-icon').textContent = icon;
+            document.getElementById('alert-text').textContent = text;
+            const memList = document.getElementById('memory-list');
+            if (showMemories && savedMemories.length > 0) {
+                memList.style.display = 'block';
+                memList.innerHTML = savedMemories.map(m => 
+                    `<div class="memory-item"><div class="memory-date">${m.date}</div>${m.feeling}: ${m.note}</div>`
+                ).join('');
+            } else {
+                memList.style.display = 'none';
+            }
+            const alert = document.getElementById('system-alert');
+            alert.classList.add('show');
+            alert.style.left = '50%';
+            alert.style.top = '50%';
+            alert.style.transform = 'translate(-50%, -50%)';
+        }
+
+        function closeAlert() {
+            beep();
+            document.getElementById('system-alert').classList.remove('show');
+        }
+        
+        function updateClock() {
+            const d = new Date();
+            const h = d.getHours() % 12 || 12;
+            const m = String(d.getMinutes()).padStart(2, '0');
+            const ap = d.getHours() >= 12 ? 'PM' : 'AM';
+            document.getElementById('taskbar-clock').textContent = `${h}:${m} ${ap}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        document.querySelectorAll('.desktop-icon').forEach(icon => {
+            icon.addEventListener('click', (e) => {
+                document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+                icon.classList.add('selected');
+                beep();
+            });
+            
+            icon.addEventListener('dblclick', (e) => {
+                const label = icon.querySelector('.icon-label').textContent;
+                if (label === 'Disk') {
+                    beep();
+                    sounds.open();
+                    if (savedMemories.length === 0) {
+                        showAlert('No positive memories saved yet. Save happy moments to remember them!', '💾');
+                    } else {
+                        showAlert('Your Positive Memories', '💾', true);
+                    }
+                } else if (label === 'Journal') {
+                    beep();
+                    sounds.open();
+                    const modal = document.getElementById('journal-modal');
+                    modal.classList.add('show');
+                    modal.style.left = '50%';
+                    modal.style.top = '50%';
+                    modal.style.transform = 'translate(-50%, -50%)';
+                    makeDraggable(modal, modal.querySelector('.modal-title'));
+                    loadJournalEntries();
+                } else if (label === 'Breathe') {
+                    beep();
+                    sounds.open();
+                    const modal = document.getElementById('breathe-modal');
+                    modal.classList.add('show');
+                    modal.style.left = '50%';
+                    modal.style.top = '50%';
+                    modal.style.transform = 'translate(-50%, -50%)';
+                    makeDraggable(modal, modal.querySelector('.modal-title'));
+                } else if (label !== 'Feelings') {
+                    beep();
+                    showAlert(label, '💾');
+                }
+            });
+        });
+
+        const conversations = {
+            happy: [
+                { msg: "You seem happy today!", btns: ["Yes, I am!", "Just okay", "Not really"] },
+                { msg: "That's wonderful! What's bringing you joy?", btns: ["Everything feels good", "Small things", "Not sure"] },
+                { msg: "Keep holding onto that feeling. You deserve happiness.", btns: ["Thank you", "I will"] }
+            ],
+            sad: [
+                { msg: "I notice you're feeling down.", btns: ["Yes, very", "A little", "I'm okay"] },
+                { msg: "It's okay to feel sad. Want to talk about it?", btns: ["Yes please", "Not now", "Maybe later"] },
+                { msg: "Remember: this feeling is temporary. You're not alone.", btns: ["Thank you", "I understand"] }
+            ],
+            angry: [
+                { msg: "You seem frustrated right now.", btns: ["Very angry", "A bit upset", "I'm fine"] },
+                { msg: "Anger is valid. What's bothering you?", btns: ["Everything", "One thing", "Not sure"] },
+                { msg: "Take a deep breath. Let's release this together.", btns: ["Okay", "I'll try"] }
+            ],
+            anxious: [
+                { msg: "You've been pushing a lot lately.", btns: ["Continue", "Close", "Ignore"] },
+                { msg: "Anxiety can be overwhelming. What's on your mind?", btns: ["Too much", "The future", "Everything"] },
+                { msg: "Ground yourself. You're safe right now, in this moment.", btns: ["Thank you", "I'll try"] }
+            ],
+            tired: [
+                { msg: "You look exhausted.", btns: ["I am", "A little", "I'm okay"] },
+                { msg: "When did you last rest?", btns: ["Can't remember", "Yesterday", "Not enough"] },
+                { msg: "Rest isn't lazy. It's necessary. Please take care of yourself.", btns: ["I will", "Okay"] }
+            ],
+            stressed: [
+                { msg: "You seem stressed.", btns: ["Very stressed", "A bit", "Managing"] },
+                { msg: "What's weighing on you?", btns: ["Work", "Life", "Everything"] },
+                { msg: "One thing at a time. You don't have to do it all today.", btns: ["Thank you", "I needed this"] }
+            ],
+            calm: [
+                { msg: "You seem peaceful today.", btns: ["Yes, I am", "Trying to be", "Sort of"] },
+                { msg: "That's beautiful. What helped you find this calm?", btns: ["Time", "Breathing", "Just happened"] },
+                { msg: "Hold onto this feeling. You've earned this peace.", btns: ["Thank you", "I will"] }
+            ],
+            confused: [
+                { msg: "You seem uncertain.", btns: ["Very confused", "A bit lost", "I'm okay"] },
+                { msg: "Confusion is part of growth. What's unclear?", btns: ["Everything", "My path", "Not sure"] },
+                { msg: "It's okay not to have all the answers. Take your time.", btns: ["Thank you", "I understand"] }
+            ]
+        };
+
+        const positiveEmotions = ['happy', 'calm'];
+        const moodColors = {
+            happy: '#FFD700',
+            sad: '#4169E1',
+            angry: '#DC143C',
+            anxious: '#FF8C00',
+            tired: '#9370DB',
+            stressed: '#FF6347',
+            calm: '#90EE90',
+            confused: '#DDA0DD',
+        };
+        let currentMood = localStorage.getItem('currentMood') || 'neutral';
+
+        function updateMoodDot(mood) {
+            const dot = document.getElementById('mood-dot');
+            if (mood && moodColors[mood]) {
+                dot.style.background = moodColors[mood];
+                currentMood = mood;
+            }
+        }
+
+        document.getElementById('mood-dot-container').addEventListener('click', () => {
+            beep();
+            sounds.open();
+            document.getElementById('feelings-icon').dispatchEvent(new Event('dblclick'));
+        });
+
+        if (currentMood !== 'neutral' && moodColors[currentMood]) {
+            updateMoodDot(currentMood);
+        }
+
+        let currentConvo = [];
+        let convoStep = 0;
+        let currentSticker = null;
+        let selectedFeeling = null;
+        let savedMemories = JSON.parse(localStorage.getItem('positiveMemories') || '[]');
+        let journalEntries = JSON.parse(localStorage.getItem('journalEntries') || '[]');
+        let breatheInterval = null;
+        let breatheStep = 0;
+
+        function makeDraggable(element, handle) {
+            let isDragging = false, offsetX, offsetY;
+            
+            handle.addEventListener('mousedown', (e) => {
+                if (e.target === handle || handle.contains(e.target)) {
+                    isDragging = true;
+                    const rect = element.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    element.style.left = e.clientX - offsetX + 'px';
+                    element.style.top = e.clientY - offsetY + 'px';
+                    element.style.transform = 'none';
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+
+        document.getElementById('feelings-icon').addEventListener('dblclick', () => {
+            beep();
+            sounds.open();
+            showAction('Opening Feelings...');
+            const modal = document.getElementById('feelings-modal');
+            modal.classList.add('show');
+            modal.style.left = '50%';
+            modal.style.top = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            makeDraggable(modal, modal.querySelector('.modal-title'));
+        });
+
+        document.getElementById('modal-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            const modal = document.getElementById('feelings-modal');
+            modal.classList.remove('show');
+            modal.style.cssText = '';
+            selectedFeeling = null;
+            document.querySelectorAll('.emoji-btn').forEach(btn => btn.classList.remove('selected'));
+        });
+
+        document.querySelectorAll('.emoji-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                beep();
+                sounds.select();
+                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedFeeling = btn.dataset.feeling;
+                updateMoodDot(selectedFeeling);
+                showAction(`Selected: ${btn.querySelector('.emoji-label').textContent}`);
+            });
+        });
+
+        function showChatMessage() {
+            if (convoStep >= currentConvo.length) {
+                const isPositive = positiveEmotions.includes(selectedFeeling);
+                const msg = isPositive ? 'Drag your emotion to the Disk to save this positive moment!' : 'Now drag your emotion to the trash to let it go.';
+                addMessage(msg, false);
+                document.getElementById('messages-input').innerHTML = '';
+                createSticker();
+                return;
+            }
+
+            const step = currentConvo[convoStep];
+            addMessage(step.msg, false);
+            
+            const inputDiv = document.getElementById('messages-input');
+            inputDiv.innerHTML = '';
+            step.btns.forEach(btnText => {
+                const btn = document.createElement('button');
+                btn.className = 'message-btn';
+                btn.textContent = btnText;
+                btn.onclick = () => nextMessage(btnText);
+                inputDiv.appendChild(btn);
+            });
+        }
+
+        function addMessage(text, isUser) {
+            sounds.message();
+            const msgBody = document.getElementById('messages-body');
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble' + (isUser ? ' user' : '');
+            bubble.textContent = text;
+            msgBody.appendChild(bubble);
+            msgBody.scrollTop = msgBody.scrollHeight;
+        }
+
+        window.nextMessage = function(response) {
+            beep();
+            addMessage(response, true);
+            convoStep++;
+            setTimeout(() => showChatMessage(), 500);
+        };
+
+        function createSticker() {
+            sounds.success();
+            showAction('Creating emotion sticker...');
+            const sticker = document.createElement('div');
+            sticker.className = 'sticker';
+            sticker.innerHTML = `<img src="icons/${selectedFeeling}.png">`;
+            sticker.style.left = '50%';
+            sticker.style.top = '50%';
+            document.body.appendChild(sticker);
+            currentSticker = sticker;
+
+            let isDragging = false, offsetX, offsetY;
+
+            sticker.addEventListener('mousedown', e => {
+                isDragging = true;
+                offsetX = e.clientX - sticker.offsetLeft;
+                offsetY = e.clientY - sticker.offsetTop;
+                sticker.style.zIndex = 10005;
+            });
+
+            document.addEventListener('mousemove', e => {
+                if (isDragging) {
+                    sticker.style.left = e.clientX - offsetX + 'px';
+                    sticker.style.top = e.clientY - offsetY + 'px';
+                    checkCollision(sticker);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+
+        function checkCollision(sticker) {
+            const trash = document.querySelectorAll('.desktop-icon')[1];
+            const disk = document.querySelectorAll('.desktop-icon')[0];
+            const sRect = sticker.getBoundingClientRect();
+            const tRect = trash.getBoundingClientRect();
+            const dRect = disk.getBoundingClientRect();
+            const isPositive = positiveEmotions.includes(selectedFeeling);
+
+            if (sRect.left < tRect.right && sRect.right > tRect.left &&
+                sRect.top < tRect.bottom && sRect.bottom > tRect.top) {
+                
+                if (isPositive) {
+                    beep();
+                    showAlert('Positive emotions should be saved to Disk, not thrown away!', '⚠️');
+                    return;
+                }
+                
+                beep();
+                sounds.release();
+                showAction('Releasing emotion...', 1000);
+                sticker.style.animation = 'fadeOut 0.5s';
+                setTimeout(() => {
+                    sticker.remove();
+                    document.getElementById('messages-window').classList.remove('show');
+                    document.getElementById('messages-body').innerHTML = '';
+                    sounds.success();
+                    setTimeout(() => {
+                        showAction('Emotion released!', 3000);
+                        showAlert('Yay! Emotion released! You\'re free now.', '🎉');
+                    }, 100);
+                    selectedFeeling = null;
+                    convoStep = 0;
+                    currentSticker = null;
+                    document.querySelectorAll('.emoji-btn').forEach(btn => btn.classList.remove('selected'));
+                }, 500);
+            } else if (sRect.left < dRect.right && sRect.right > dRect.left &&
+                       sRect.top < dRect.bottom && sRect.bottom > dRect.top) {
+                
+                if (!isPositive) {
+                    beep();
+                    showAlert('Negative emotions should be thrown in Trash, not saved to Disk!', '⚠️');
+                    return;
+                }
+                
+                beep();
+                sounds.success();
+                showAction('Saving to disk...', 1000);
+                sticker.style.animation = 'fadeOut 0.5s';
+                setTimeout(() => {
+                    sticker.remove();
+                    document.getElementById('messages-window').classList.remove('show');
+                    document.getElementById('messages-body').innerHTML = '';
+                    const memory = {
+                        feeling: selectedFeeling.charAt(0).toUpperCase() + selectedFeeling.slice(1),
+                        note: 'Positive moment saved',
+                        date: new Date().toLocaleDateString()
+                    };
+                    savedMemories.unshift(memory);
+                    if (savedMemories.length > 20) savedMemories = savedMemories.slice(0, 20);
+                    localStorage.setItem('positiveMemories', JSON.stringify(savedMemories));
+                    setTimeout(() => {
+                        showAction('Memory saved!', 3000);
+                        showAlert('Positive memory saved to Disk! Open Disk to view your memories.', '💾');
+                    }, 100);
+                    selectedFeeling = null;
+                    convoStep = 0;
+                    currentSticker = null;
+                    document.querySelectorAll('.emoji-btn').forEach(btn => btn.classList.remove('selected'));
+                }, 500);
+            }
+        }
+
+        document.getElementById('send-feeling').addEventListener('click', () => {
+            if (!selectedFeeling) {
+                beep();
+                showAlert('Please select a feeling first', '⚠️');
+                return;
+            }
+            beep();
+            sounds.open();
+            showAction('Loading conversation...');
+            document.getElementById('feelings-modal').classList.remove('show');
+            
+            currentConvo = conversations[selectedFeeling];
+            convoStep = 0;
+            
+            const msgWindow = document.getElementById('messages-window');
+            document.getElementById('messages-body').innerHTML = '';
+            msgWindow.classList.add('show');
+            msgWindow.style.left = '50%';
+            msgWindow.style.top = '50%';
+            msgWindow.style.transform = 'translate(-50%, -50%)';
+            makeDraggable(msgWindow, msgWindow.querySelector('.messages-titlebar'));
+            setTimeout(() => showChatMessage(), 300);
+        });
+
+        document.getElementById('messages-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            const msgWindow = document.getElementById('messages-window');
+            msgWindow.classList.remove('show');
+            msgWindow.style.cssText = '';
+            document.getElementById('messages-body').innerHTML = '';
+            if (currentSticker) {
+                currentSticker.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => currentSticker.remove(), 300);
+            }
+            currentSticker = null;
+        });
+        
+        document.getElementById('journal-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            const modal = document.getElementById('journal-modal');
+            modal.classList.remove('show');
+            modal.style.cssText = '';
+        });
+        
+        document.getElementById('save-journal').addEventListener('click', () => {
+            const text = document.getElementById('journal-text').value.trim();
+            if (!text) {
+                showAlert('Please write something first', '⚠️');
+                return;
+            }
+            beep();
+            sounds.success();
+            const entry = {
+                text: text,
+                date: new Date().toLocaleString()
+            };
+            journalEntries.unshift(entry);
+            if (journalEntries.length > 50) journalEntries = journalEntries.slice(0, 50);
+            localStorage.setItem('journalEntries', JSON.stringify(journalEntries));
+            document.getElementById('journal-text').value = '';
+            loadJournalEntries();
+            showAction('Journal entry saved!', 2000);
+        });
+        
+        function loadJournalEntries() {
+            const list = document.getElementById('journal-list');
+            if (journalEntries.length === 0) {
+                list.innerHTML = '<div style="font-size:10px;color:#666;text-align:center;padding:20px;">No entries yet</div>';
+                return;
+            }
+            list.innerHTML = journalEntries.map(e => 
+                `<div style="border-bottom:1px solid #ddd;padding:8px;margin-bottom:8px;">
+                    <div style="font-size:9px;color:#666;margin-bottom:4px;">${e.date}</div>
+                    <div style="font-size:11px;line-height:1.4;">${e.text}</div>
+                </div>`
+            ).join('');
+        }
+        
+        document.getElementById('breathe-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            if (breatheInterval) clearInterval(breatheInterval);
+            breatheStep = 0;
+            const modal = document.getElementById('breathe-modal');
+            modal.classList.remove('show');
+            modal.style.cssText = '';
+            document.getElementById('breathe-circle').style.transform = 'scale(1)';
+            document.getElementById('breathe-instruction').textContent = 'Click Start';
+            document.getElementById('start-breathe').textContent = 'Start';
+        });
+        
+        document.getElementById('start-breathe').addEventListener('click', () => {
+            beep();
+            if (breatheInterval) {
+                clearInterval(breatheInterval);
+                breatheInterval = null;
+                document.getElementById('start-breathe').textContent = 'Start';
+                document.getElementById('breathe-instruction').textContent = 'Click Start';
+                document.getElementById('breathe-circle').style.transform = 'scale(1)';
+                breatheStep = 0;
+                return;
+            }
+            
+            document.getElementById('start-breathe').textContent = 'Stop';
+            breatheStep = 0;
+            
+            function doBreathe() {
+                const circle = document.getElementById('breathe-circle');
+                const instruction = document.getElementById('breathe-instruction');
+                
+                switch(breatheStep % 4) {
+                    case 0:
+                        instruction.textContent = 'Breathe In';
+                        circle.textContent = '4';
+                        circle.style.transform = 'scale(1.5)';
+                        sounds.message();
+                        break;
+                    case 1:
+                        instruction.textContent = 'Hold';
+                        circle.textContent = '4';
+                        sounds.message();
+                        break;
+                    case 2:
+                        instruction.textContent = 'Breathe Out';
+                        circle.textContent = '4';
+                        circle.style.transform = 'scale(1)';
+                        sounds.message();
+                        break;
+                    case 3:
+                        instruction.textContent = 'Hold';
+                        circle.textContent = '4';
+                        sounds.message();
+                        break;
+                }
+                breatheStep++;
+            }
+            
+            doBreathe();
+            breatheInterval = setInterval(doBreathe, 4000);
+        });
+
+        document.querySelector('.taskbar-left .taskbar-item:nth-child(2)').addEventListener('click', () => {
+            beep();
+            sounds.open();
+            const modal = document.getElementById('help-modal');
+            modal.classList.add('show');
+            modal.style.left = '50%';
+            modal.style.top = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            makeDraggable(modal, modal.querySelector('.modal-title'));
+        });
+
+        document.getElementById('help-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            const modal = document.getElementById('help-modal');
+            modal.classList.remove('show');
+            modal.style.cssText = '';
+        });
+
+        let currentQuote = null;
+
+        const quotes = [
+            {content: 'The only way to do great work is to love what you do.', author: 'Steve Jobs'},
+            {content: 'Believe you can and you\'re halfway there.', author: 'Theodore Roosevelt'},
+            {content: 'The future belongs to those who believe in the beauty of their dreams.', author: 'Eleanor Roosevelt'},
+            {content: 'It does not matter how slowly you go as long as you do not stop.', author: 'Confucius'},
+            {content: 'Everything you\'ve ever wanted is on the other side of fear.', author: 'George Addair'},
+            {content: 'Success is not final, failure is not fatal: it is the courage to continue that counts.', author: 'Winston Churchill'},
+            {content: 'Hardships often prepare ordinary people for an extraordinary destiny.', author: 'C.S. Lewis'},
+            {content: 'Believe in yourself. You are braver than you think, more talented than you know, and capable of more than you imagine.', author: 'Roy T. Bennett'},
+            {content: 'The only impossible journey is the one you never begin.', author: 'Tony Robbins'},
+            {content: 'Your limitation—it\'s only your imagination.', author: 'Anonymous'},
+            {content: 'Great things never come from comfort zones.', author: 'Anonymous'},
+            {content: 'Dream it. Wish it. Do it.', author: 'Anonymous'},
+            {content: 'Success doesn\'t just find you. You have to go out and get it.', author: 'Anonymous'},
+            {content: 'The harder you work for something, the greater you\'ll feel when you achieve it.', author: 'Anonymous'},
+            {content: 'Don\'t stop when you\'re tired. Stop when you\'re done.', author: 'Anonymous'},
+            {content: 'Wake up with determination. Go to bed with satisfaction.', author: 'Anonymous'},
+            {content: 'Do something today that your future self will thank you for.', author: 'Anonymous'},
+            {content: 'Little things make big days.', author: 'Anonymous'},
+            {content: 'It\'s going to be hard, but hard does not mean impossible.', author: 'Anonymous'},
+            {content: 'Don\'t wait for opportunity. Create it.', author: 'Anonymous'}
+        ];
+
+        async function fetchQuote() {
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            currentQuote = randomQuote;
+            document.getElementById('quote-text').textContent = `"${randomQuote.content}"`;
+            document.getElementById('quote-author').textContent = `— ${randomQuote.author}`;
+        }
+
+        document.getElementById('view-btn').addEventListener('click', () => {
+            beep();
+            sounds.open();
+            const modal = document.getElementById('calm-modal');
+            modal.classList.add('show');
+            modal.style.left = '50%';
+            modal.style.top = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            makeDraggable(modal, modal.querySelector('.modal-title'));
+            fetchQuote();
+        });
+
+        document.getElementById('calm-close').addEventListener('click', () => {
+            beep();
+            sounds.close();
+            const modal = document.getElementById('calm-modal');
+            modal.classList.remove('show');
+        });
+
+        document.getElementById('new-quote').addEventListener('click', () => {
+            beep();
+            fetchQuote();
+        });
+
+        document.getElementById('save-quote').addEventListener('click', () => {
+            if (currentQuote) {
+                beep();
+                sounds.success();
+                const saved = JSON.parse(localStorage.getItem('savedQuotes') || '[]');
+                saved.unshift({quote: currentQuote.content, author: currentQuote.author, date: new Date().toLocaleDateString()});
+                if (saved.length > 20) saved.pop();
+                localStorage.setItem('savedQuotes', JSON.stringify(saved));
+                showAction('Quote saved!', 2000);
+            }
+        });
+    </script>
+</body>
+</html>
