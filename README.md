@@ -19,8 +19,8 @@ https://khanaaaaaa.github.io/LifeOS/
 
 ## How to Use
 
-1. Open index.html in any modern web browser
-2. Double-click desktop icons to open applications
+1. Open https://khanaaaaaa.github.io/LifeOS/
+2. **Double Click** desktop icons to open applications; Single clicking is only for selection       and does nothing
 3. Click the Help button in the taskbar for crisis resources
 4. Drag windows by their title bar
 5. Select feelings and interact with the emotional support system
