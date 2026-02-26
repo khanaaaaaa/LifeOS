@@ -7,7 +7,7 @@ A retro Mac OS-inspired mental health support application that runs entirely in 
 https://khanaaaaaa.github.io/LifeOS/
 
 ## Note
- - Click on the Feelings Desktop Icon to get started; The Trash and Disk icons are a part of the Feelings App's Features
+ - Click on the Feelings Desktop Icon to get started; The Trash and Disk icons are a part of the Feelings App's Features.
 
 ## Features
 
